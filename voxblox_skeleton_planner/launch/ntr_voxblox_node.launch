@@ -13,7 +13,7 @@
 
 		<param name="autostart" value="true" />
         <!-- Path to save map -->
-        <param name="file_path" value="/home/ubuntu/tmpfs_voxblox" />
+        <param name="file_path" value="/home/$(env USER)/tmpfs_voxblox" />
         <!-- Publishing settings. -->
         <param name="publish_tsdf_map" value="true" />
         <param name="publish_esdf_map" value="true" />

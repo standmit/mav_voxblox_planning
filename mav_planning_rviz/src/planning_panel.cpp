@@ -300,12 +300,18 @@ void PlanningPanel::callPlannerService() {
   start_pose_widget_->getPose(&start_point);
   goal_pose_widget_->getPose(&goal_point);
 
-  std::thread t([service_name, start_point, goal_point] {
+  std::string frame_id = vis_manager_->getFixedFrame().toStdString();
+
+  std::thread t([service_name, start_point, goal_point, frame_id]{
     mav_planning_msgs::PlannerService req;
     mav_msgs::msgPoseStampedFromEigenTrajectoryPoint(start_point,
                                                      &req.request.start_pose);
     mav_msgs::msgPoseStampedFromEigenTrajectoryPoint(goal_point,
                                                      &req.request.goal_pose);
+
+    req.request.start_pose.header.frame_id = frame_id;
+    req.request.goal_pose.header.frame_id = frame_id;
+
 
     try {
       ROS_DEBUG_STREAM("Service name: " << service_name);

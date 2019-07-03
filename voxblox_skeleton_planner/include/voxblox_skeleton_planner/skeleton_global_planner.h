@@ -22,6 +22,8 @@
 
 #include "voxblox_skeleton_planner/skeleton_graph_planner.h"
 
+#include "mav_msgs/DoubleString.h"
+
 namespace mav_planning {
 
 class SkeletonGlobalPlanner {
@@ -57,8 +59,14 @@ class SkeletonGlobalPlanner {
   ros::Publisher path_pub_;
   ros::Publisher waypoint_list_pub_;
 
+  ros::Subscriber voxblox_sub_;
+
+  void voxblox_cb(const mav_msgs::DoubleStringConstPtr msg);
+
   ros::ServiceServer planner_srv_;
   ros::ServiceServer path_pub_srv_;
+
+  tf::TransformListener listener;
 
   // Settings for physical constriants.
   mav_planning::PhysicalConstraints constraints_;

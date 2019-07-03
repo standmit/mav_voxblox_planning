@@ -12,6 +12,9 @@
 #include "voxblox_skeleton/ros/skeleton_vis.h"
 #include "voxblox_skeleton/skeleton_generator.h"
 
+#include "std_msgs/String.h"
+#include "mav_msgs/DoubleString.h"
+
 namespace voxblox {
 
 class SkeletonizerNode {
@@ -20,15 +23,23 @@ class SkeletonizerNode {
       : nh_(nh),
         nh_private_(nh_private),
         frame_id_("map"),
-        esdf_server_(nh_, nh_private_) {
+		esdf_server_(nh_, nh_private_) {
     skeleton_pub_ = nh_private_.advertise<pcl::PointCloud<pcl::PointXYZ> >(
         "skeleton", 1, true);
     sparse_graph_pub_ = nh_private_.advertise<visualization_msgs::MarkerArray>(
         "sparse_graph", 1, true);
+
+    file_path_pub_ = nh_private_.advertise<mav_msgs::DoubleString>(
+    		"skeleton_and_graph_file", 1, true);
+    map_name_sub_ = nh_private_.subscribe("/voxblox_node/map_name", 1, &SkeletonizerNode::map_name_cb, this);
   }
 
   // Initialize the node.
   void init();
+  void init_skeleton(const std::string& input_filepath,
+		  	  	  	 const std::string& output_filepath,
+					 const std::string& sparse_graph_filepath);
+  void map_name_cb(const std_msgs::String& msg);
 
   // Make a skeletor!!!
   void skeletonize(Layer<EsdfVoxel>* esdf_layer, voxblox::Pointcloud* skeleton,
@@ -39,25 +50,35 @@ class SkeletonizerNode {
   ros::NodeHandle nh_private_;
 
   std::string frame_id_;
+  bool update_esdf;
+  uint8_t file_number_ = 0;
 
   ros::Publisher skeleton_pub_;
   ros::Publisher sparse_graph_pub_;
+  ros::Publisher file_path_pub_;
+  ros::Subscriber map_name_sub_;
 
   EsdfServer esdf_server_;
 
   SkeletonGenerator skeleton_generator_;
 };
 
-void SkeletonizerNode::init() {
+void SkeletonizerNode::init(){
+	nh_private_.param("frame_id", frame_id_, frame_id_);
+	nh_private_.param("update_esdf", update_esdf, false);
+}
+
+void SkeletonizerNode::init_skeleton(const std::string& input_filepath,
+	  	  	 	 	 	 	 	 	 const std::string& output_filepath,
+									 const std::string& sparse_graph_filepath) {
   // Load a file from the params.
-  std::string input_filepath, output_filepath, sparse_graph_filepath;
-  nh_private_.param("input_filepath", input_filepath, input_filepath);
-  nh_private_.param("output_filepath", output_filepath, output_filepath);
-  nh_private_.param("sparse_graph_filepath", sparse_graph_filepath,
-                    sparse_graph_filepath);
-  nh_private_.param("frame_id", frame_id_, frame_id_);
-  bool update_esdf = false;
-  nh_private_.param("update_esdf", update_esdf, update_esdf);
+//  std::string input_filepath, output_filepath, sparse_graph_filepath;
+//  nh_private_.param("input_filepath", input_filepath, input_filepath);
+//  nh_private_.param("output_filepath", output_filepath, output_filepath);
+//  nh_private_.param("sparse_graph_filepath", sparse_graph_filepath,
+//                    sparse_graph_filepath);
+//  nh_private_.param("frame_id", frame_id_, frame_id_);
+//  nh_private_.param("update_esdf", update_esdf, false);
 
   if (input_filepath.empty()) {
     return;
@@ -157,6 +178,33 @@ void SkeletonizerNode::skeletonize(Layer<EsdfVoxel>* esdf_layer,
   sparse_graph_pub_.publish(marker_array);
 }
 
+inline bool remove_file(const std::string& filename) {
+  return (remove(filename.c_str()) == 0);
+}
+
+inline void remove_file_ros(const std::string& filename) {
+  if (not remove_file(filename))
+    ROS_ERROR("Failed to remove [%s] file", filename.c_str());
+}
+
+void SkeletonizerNode::map_name_cb(const std_msgs::String& msg){
+	std::string input_filepath, output_filepath, sparse_graph_filepath;
+	input_filepath = msg.data;
+	output_filepath = input_filepath.substr(0, input_filepath.find_last_of("/")) + "/s" + std::to_string(this->file_number_) + ".vxblx";;
+	sparse_graph_filepath = input_filepath.substr(0, input_filepath.find_last_of("/")) + "/g" + std::to_string(this->file_number_) + ".vxblx";;
+
+	init_skeleton(input_filepath, output_filepath, sparse_graph_filepath);
+
+	remove_file_ros(input_filepath);
+
+	this->file_number_++;
+
+	mav_msgs::DoubleString out_msg;
+	out_msg.skeleton = output_filepath;
+	out_msg.graph = sparse_graph_filepath;
+	file_path_pub_.publish(out_msg);
+}
+
 }  // namespace voxblox
 
 int main(int argc, char** argv) {
@@ -170,7 +218,6 @@ int main(int argc, char** argv) {
   FLAGS_alsologtostderr = true;
 
   voxblox::SkeletonizerNode node(nh, nh_private);
-
   node.init();
 
   ros::spin();

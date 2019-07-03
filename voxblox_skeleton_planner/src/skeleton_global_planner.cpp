@@ -10,18 +10,14 @@ SkeletonGlobalPlanner::SkeletonGlobalPlanner(const ros::NodeHandle& nh,
                                              const ros::NodeHandle& nh_private)
     : nh_(nh),
       nh_private_(nh_private),
-      frame_id_("map"),
       visualize_(true),
       voxblox_server_(nh_, nh_private_),
       skeleton_graph_planner_(nh_, nh_private_),
       skeleton_generator_() {
   constraints_.setParametersFromRos(nh_private_);
 
-  std::string voxblox_path;
-  nh_private_.param("voxblox_path", voxblox_path, voxblox_path);
-  nh_private_.param("sparse_graph_path", sparse_graph_path_,
-                    sparse_graph_path_);
   nh_private_.param("visualize", visualize_, visualize_);
+  nh_private_.param("frame_id", frame_id_, std::string("map"));
 
   path_marker_pub_ =
       nh_private_.advertise<visualization_msgs::MarkerArray>("path", 1, true);
@@ -38,73 +34,107 @@ SkeletonGlobalPlanner::SkeletonGlobalPlanner(const ros::NodeHandle& nh,
   path_pub_srv_ = nh_private_.advertiseService(
       "publish_path", &SkeletonGlobalPlanner::publishPathCallback, this);
 
-  // Load a file from the params.
-  if (voxblox_path.empty()) {
-    ROS_ERROR("Couldn't load map, empty filename.");
-    return;
-  }
-
-  std::shared_ptr<voxblox::EsdfMap> esdf_map = voxblox_server_.getEsdfMapPtr();
-  CHECK(esdf_map);
-
-  if (!voxblox_server_.loadMap(voxblox_path)) {
-    ROS_ERROR("Couldn't load ESDF map!");
-  }
-
-  ROS_INFO(
-      "Size: %f VPS: %zu",
-      voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr()->voxel_size(),
-      voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr()->voxels_per_side());
-
-  // Also make a new skeleton layer and load it.
-  // Make this as an unmanaged raw pointer, since we'll give it to skeleton
-  // generator to own.
-  voxblox::Layer<voxblox::SkeletonVoxel>* skeleton_layer =
-      new voxblox::Layer<voxblox::SkeletonVoxel>(
-          voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr()->voxel_size(),
-          voxblox_server_.getEsdfMapPtr()
-              ->getEsdfLayerPtr()
-              ->voxels_per_side());
-
-  if (!voxblox::io::LoadBlocksFromFile<voxblox::SkeletonVoxel>(
-          voxblox_path,
-          voxblox::Layer<
-              voxblox::SkeletonVoxel>::BlockMergingStrategy::kReplace,
-          true, skeleton_layer)) {
-    ROS_ERROR("Coudln't load skeleton layer.");
-    return;
-  }
-
   voxblox_server_.setTraversabilityRadius(constraints_.robot_radius);
 
-  // Now set up the skeleton generator.
-  skeleton_generator_.setEsdfLayer(
-      voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr());
-  skeleton_generator_.setSkeletonLayer(skeleton_layer);
   skeleton_generator_.setMinGvdDistance(constraints_.robot_radius);
   skeleton_generator_.setGenerateByLayerNeighbors(true);
 
-  // Set up the A* planners.
-  skeleton_planner_.setSkeletonLayer(skeleton_generator_.getSkeletonLayer());
-  skeleton_planner_.setEsdfLayer(
-      voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr());
   skeleton_planner_.setMinEsdfDistance(constraints_.robot_radius);
 
-  // Set up skeleton graph planner.
-  skeleton_graph_planner_.setEsdfLayer(
-      voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr());
-
-  // Set up shortener.
-  path_shortener_.setEsdfLayer(
-      voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr());
   path_shortener_.setConstraints(constraints_);
 
   // Loco smoother!
   loco_smoother_.setParametersFromRos(nh_private_);
-  loco_smoother_.setMinCollisionCheckResolution(
-      voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr()->voxel_size());
   loco_smoother_.setMapDistanceCallback(std::bind(
       &SkeletonGlobalPlanner::getMapDistance, this, std::placeholders::_1));
+
+  voxblox_sub_ = nh_private_.subscribe("voxblox", 1, &SkeletonGlobalPlanner::voxblox_cb, this);
+}
+
+inline bool remove_file(const std::string& filename) {
+  return (remove(filename.c_str()) == 0);
+}
+
+inline void remove_file_ros(const std::string& filename) {
+  if (not remove_file(filename))
+    ROS_ERROR("Failed to remove [%s] file", filename.c_str());
+}
+
+void SkeletonGlobalPlanner::voxblox_cb(const mav_msgs::DoubleStringConstPtr msg) {
+  ROS_WARN("CALLBACHISCHE!!!!");
+  voxblox::Layer<voxblox::SkeletonVoxel>* skeleton_layer;
+  try {
+    // Load a file.
+    if (msg->skeleton.empty()) {
+      const std::string err_mes("Couldn't load map, empty filename.");
+      ROS_ERROR("%s", err_mes.c_str());
+      throw err_mes;
+    }
+
+    if (not msg->graph.empty())
+      sparse_graph_path_ = msg->graph;
+
+    if (!voxblox_server_.loadMap(msg->skeleton)) {
+      ROS_ERROR("Couldn't load ESDF map!");
+    }
+
+    std::shared_ptr<voxblox::EsdfMap> esdf_map = voxblox_server_.getEsdfMapPtr();
+    CHECK(esdf_map);
+
+    ROS_INFO(
+        "Size: %f VPS: %zu",
+        voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr()->voxel_size(),
+        voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr()->voxels_per_side());
+
+    // Also make a new skeleton layer and load it.
+    // Make this as an unmanaged raw pointer, since we'll give it to skeleton
+    // generator to own.
+    skeleton_layer =
+        new voxblox::Layer<voxblox::SkeletonVoxel>(
+            voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr()->voxel_size(),
+            voxblox_server_.getEsdfMapPtr()
+                ->getEsdfLayerPtr()
+                ->voxels_per_side());
+
+    if (!voxblox::io::LoadBlocksFromFile<voxblox::SkeletonVoxel>(
+            msg->graph,
+            voxblox::Layer<
+                voxblox::SkeletonVoxel>::BlockMergingStrategy::kReplace,
+            true, skeleton_layer)) {
+      ROS_ERROR("Coudln't load skeleton layer.");
+    }
+
+    // Now set up the skeleton generator.
+    skeleton_generator_.setEsdfLayer(
+        voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr());
+    skeleton_generator_.setSkeletonLayer(skeleton_layer);
+
+    // Set up the A* planners.
+    skeleton_planner_.setSkeletonLayer(skeleton_generator_.getSkeletonLayer());
+    skeleton_planner_.setEsdfLayer(
+        voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr());
+
+    // Set up skeleton graph planner.
+    skeleton_graph_planner_.setEsdfLayer(
+        voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr());
+
+    // Set up shortener.
+    path_shortener_.setEsdfLayer(
+        voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr());
+
+    loco_smoother_.setMinCollisionCheckResolution(
+        voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr()->voxel_size());
+
+    generateSparseGraph();
+
+    remove_file_ros(msg->skeleton);
+    remove_file_ros(msg->graph);
+  }
+  catch (...) {
+    remove_file_ros(msg->skeleton);
+    remove_file_ros(msg->graph);
+    throw;
+  }
 
   if (visualize_) {
     voxblox_server_.generateMesh();
@@ -125,6 +155,7 @@ void SkeletonGlobalPlanner::generateSparseGraph() {
     skeleton_generator_.generateSparseGraph();
     ROS_INFO("Generated skeleton graph.");
   }
+
   if (visualize_) {
     voxblox::Pointcloud pointcloud;
     std::vector<float> distances;
@@ -158,6 +189,15 @@ bool SkeletonGlobalPlanner::plannerServiceCallback(
     mav_planning_msgs::PlannerServiceRequest& request,
     mav_planning_msgs::PlannerServiceResponse& response) {
   mav_msgs::EigenTrajectoryPoint start_pose, goal_pose;
+
+  try {
+	  listener.transformPose(frame_id_, request.start_pose, request.start_pose);
+	  listener.transformPose(frame_id_, request.goal_pose, request.goal_pose);
+  }
+  catch( const tf::TransformException  &e )
+  {
+      ROS_ERROR( "%s", e.what() );
+  }
 
   mav_msgs::eigenTrajectoryPointFromPoseMsg(request.start_pose, &start_pose);
   mav_msgs::eigenTrajectoryPointFromPoseMsg(request.goal_pose, &goal_pose);

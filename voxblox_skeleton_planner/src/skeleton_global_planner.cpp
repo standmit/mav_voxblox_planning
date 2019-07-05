@@ -19,6 +19,12 @@ SkeletonGlobalPlanner::SkeletonGlobalPlanner(const ros::NodeHandle& nh,
   nh_private_.param("visualize", visualize_, visualize_);
   nh_private_.param("frame_id", frame_id_, std::string("map"));
 
+  run_astar_esdf = nh_private_.param("run_astar_esdf", false);
+  run_astar_diagram = nh_private_.param("run_astar_diagram", true);
+  run_astar_graph = nh_private_.param("run_astar_graph", true);
+  shorten_graph = nh_private_.param("shorten_graph", true);
+  smooth_path  = nh_private_.param("smooth_path", true);
+
   path_marker_pub_ =
       nh_private_.advertise<visualization_msgs::MarkerArray>("path", 1, true);
   skeleton_pub_ = nh_private_.advertise<pcl::PointCloud<pcl::PointXYZ> >(
@@ -61,7 +67,6 @@ inline void remove_file_ros(const std::string& filename) {
 }
 
 void SkeletonGlobalPlanner::voxblox_cb(const mav_msgs::DoubleStringConstPtr msg) {
-  ROS_WARN("CALLBACHISCHE!!!!");
   voxblox::Layer<voxblox::SkeletonVoxel>* skeleton_layer;
   try {
     // Load a file.
@@ -220,13 +225,6 @@ bool SkeletonGlobalPlanner::plannerServiceCallback(
 
   visualization_msgs::MarkerArray marker_array;
 
-  bool run_astar_esdf = false;
-  bool run_astar_diagram = true;
-  bool run_astar_graph = true;
-  bool shorten_graph = true;
-  bool exact_start_and_goal = true;
-  bool smooth_path = true;
-
   if (run_astar_esdf) {
     // First, run just the ESDF A*...
     voxblox::AlignedVector<voxblox::Point> esdf_coordinate_path;
@@ -335,6 +333,9 @@ bool SkeletonGlobalPlanner::plannerServiceCallback(
         loco_smoother_.getPathBetweenWaypoints(short_path, &loco_path);
 
         loco_timer.Stop();
+
+        last_waypoints_ = loco_path;
+
         if (visualize_) {
           marker_array.markers.push_back(createMarkerForPath(
               loco_path, frame_id_, mav_visualization::Color::Teal(),

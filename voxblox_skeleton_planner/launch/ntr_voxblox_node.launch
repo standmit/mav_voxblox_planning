@@ -5,9 +5,10 @@
     <arg name="esdf_max_distance_m" default="2.0"/>
     <arg name="world_frame" default="world" />
     <arg name="clear_radius" default="1.0" />
+    <arg name="pointcloud_topic" default="pointcloud" />
 
       <node name="voxblox_node" pkg="voxblox_ros" type="esdf_server" output="screen" args="-alsologtostderr" clear_params="true">
-        <remap from="pointcloud" to="/velodyne_horr/points_limited"/>
+        <remap from="pointcloud" to="$(arg pointcloud_topic)"/>
         <remap from="voxblox_node/esdf_map_out" to="esdf_map" />
         <remap from="voxblox_node/tsdf_map_out" to="tsdf_map" />
 

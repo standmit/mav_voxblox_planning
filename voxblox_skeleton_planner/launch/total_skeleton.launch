@@ -1,8 +1,11 @@
 <?xml version="1.0"?>
 
 <launch>
+    <arg name="pointcloud_topic" default="pointcloud" />
 
-    <include file="$(find voxblox_skeleton_planner)/launch/ntr_voxblox_node.launch" />
+    <include file="$(find voxblox_skeleton_planner)/launch/ntr_voxblox_node.launch">
+        <arg name="pointcloud_topic" value="$(arg pointcloud_topic)" />
+    </include>
 
     <include file="$(find voxblox_skeleton)/launch/ntr_skeletonize_map.launch" />
 

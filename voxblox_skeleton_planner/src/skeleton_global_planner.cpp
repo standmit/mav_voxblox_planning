@@ -87,7 +87,7 @@ void SkeletonGlobalPlanner::voxblox_cb(const mav_msgs::DoubleStringConstPtr msg)
     std::shared_ptr<voxblox::EsdfMap> esdf_map = voxblox_server_.getEsdfMapPtr();
     CHECK(esdf_map);
 
-    ROS_INFO(
+    ROS_INFO_COND(verbose_,
         "Size: %f VPS: %zu",
         voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr()->voxel_size(),
         voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr()->voxels_per_side());
@@ -150,16 +150,16 @@ void SkeletonGlobalPlanner::voxblox_cb(const mav_msgs::DoubleStringConstPtr msg)
 }
 
 void SkeletonGlobalPlanner::generateSparseGraph() {
-  ROS_INFO("About to generate skeleton graph.");
+  ROS_INFO_COND(verbose_, "About to generate skeleton graph.");
   skeleton_generator_.updateSkeletonFromLayer();
-  ROS_INFO("Re-populated from layer.");
+  ROS_INFO_COND(verbose_, "Re-populated from layer.");
 
   if (!sparse_graph_path_.empty() &&
       skeleton_generator_.loadSparseGraphFromFile(sparse_graph_path_)) {
-    ROS_INFO_STREAM("Loaded sparse graph from file: " << sparse_graph_path_);
+	ROS_INFO_STREAM_COND(verbose_, "Loaded sparse graph from file: " << sparse_graph_path_);
   } else {
     skeleton_generator_.generateSparseGraph();
-    ROS_INFO("Generated skeleton graph.");
+    ROS_INFO_COND(verbose_, "Generated skeleton graph.");
   }
 
   if (visualize_) {
@@ -187,9 +187,8 @@ void SkeletonGlobalPlanner::generateSparseGraph() {
   skeleton_graph_planner_.setSparseGraph(&skeleton_generator_.getSparseGraph());
   kd_tree_init.Stop();
 
-  if (verbose_)
-	  ROS_INFO_STREAM("Generation timings: " << std::endl
-											 << voxblox::timing::Timing::Print());
+  ROS_INFO_STREAM_COND(verbose_, "Generation timings: " << std::endl
+										 	 	 	 	<< voxblox::timing::Timing::Print());
 }
 
 bool SkeletonGlobalPlanner::plannerServiceCallback(

@@ -24,6 +24,7 @@ SkeletonGlobalPlanner::SkeletonGlobalPlanner(const ros::NodeHandle& nh,
   run_astar_graph = nh_private_.param("run_astar_graph", true);
   shorten_graph = nh_private_.param("shorten_graph", true);
   smooth_path  = nh_private_.param("smooth_path", true);
+  verbose_ = nh_private_.param("verbose", true);
 
   path_marker_pub_ =
       nh_private_.advertise<visualization_msgs::MarkerArray>("path", 1, true);
@@ -186,8 +187,9 @@ void SkeletonGlobalPlanner::generateSparseGraph() {
   skeleton_graph_planner_.setSparseGraph(&skeleton_generator_.getSparseGraph());
   kd_tree_init.Stop();
 
-  ROS_INFO_STREAM("Generation timings: " << std::endl
-                                         << voxblox::timing::Timing::Print());
+  if (verbose_)
+	  ROS_INFO_STREAM("Generation timings: " << std::endl
+											 << voxblox::timing::Timing::Print());
 }
 
 bool SkeletonGlobalPlanner::plannerServiceCallback(
@@ -349,9 +351,10 @@ bool SkeletonGlobalPlanner::plannerServiceCallback(
     path_marker_pub_.publish(marker_array);
   }
 
-  ROS_INFO_STREAM("All timings: "
-                  << std::endl
-                  << mav_trajectory_generation::timing::Timing::Print());
+  if (verbose_)
+	  ROS_INFO_STREAM("All timings: "
+					  << std::endl
+					  << mav_trajectory_generation::timing::Timing::Print());
 }
 
 void SkeletonGlobalPlanner::convertCoordinatePathToPath(

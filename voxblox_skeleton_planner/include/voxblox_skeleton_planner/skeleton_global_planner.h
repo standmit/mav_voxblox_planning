@@ -55,6 +55,7 @@ class SkeletonGlobalPlanner {
   bool run_astar_graph;
   bool shorten_graph;
   bool smooth_path;
+  bool verbose_;
 
  private:
   ros::NodeHandle nh_;

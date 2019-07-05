@@ -4,6 +4,7 @@ int main(int argc, char** argv) {
   ros::init(argc, argv, "skeleton_global_planner");
   google::InitGoogleLogging(argv[0]);
   google::InstallFailureSignalHandler();
+  google::ParseCommandLineFlags(&argc, &argv, false);
 
   ros::NodeHandle nh("");
   ros::NodeHandle nh_private("~");

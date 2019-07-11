@@ -45,6 +45,9 @@ class SkeletonizerNode {
   void skeletonize(Layer<EsdfVoxel>* esdf_layer, voxblox::Pointcloud* skeleton,
                    std::vector<float>* distances);
 
+ protected:
+  bool verbose;
+
  private:
   ros::NodeHandle nh_;
   ros::NodeHandle nh_private_;
@@ -66,6 +69,7 @@ class SkeletonizerNode {
 void SkeletonizerNode::init(){
 	nh_private_.param("frame_id", frame_id_, frame_id_);
 	nh_private_.param("update_esdf", update_esdf, false);
+	nh_private_.param("verbose", verbose, true);
 }
 
 void SkeletonizerNode::init_skeleton(const std::string& input_filepath,
@@ -84,7 +88,8 @@ void SkeletonizerNode::init_skeleton(const std::string& input_filepath,
     return;
   }
 
-  esdf_server_.loadMap(input_filepath);
+  if (not esdf_server_.loadMap(input_filepath))
+	  return;
 
   esdf_server_.disableIncrementalUpdate();
   if (update_esdf ||
@@ -100,7 +105,7 @@ void SkeletonizerNode::init_skeleton(const std::string& input_filepath,
   esdf_server_.publishPointclouds();
   esdf_server_.publishMap();
 
-  ROS_INFO("Finished updating ESDF.");
+  ROS_INFO_COND(verbose, "Finished updating ESDF.");
 
   // Skeletonize????
   voxblox::Pointcloud pointcloud;
@@ -121,14 +126,14 @@ void SkeletonizerNode::init_skeleton(const std::string& input_filepath,
       constexpr bool kClearFile = false;
       io::SaveLayer<SkeletonVoxel>(*skeleton_generator_.getSkeletonLayer(),
                                    output_filepath, kClearFile);
-      ROS_INFO("Output map to: %s", output_filepath.c_str());
+      ROS_INFO_COND(verbose, "Output map to: %s", output_filepath.c_str());
     } else {
       ROS_ERROR("Couldn't output map to: %s", output_filepath.c_str());
     }
   }
   if (!sparse_graph_filepath.empty()) {
     if (skeleton_generator_.saveSparseGraphToFile(sparse_graph_filepath)) {
-      ROS_INFO("Output sparse graph to: %s", sparse_graph_filepath.c_str());
+      ROS_INFO_COND(verbose, "Output sparse graph to: %s", sparse_graph_filepath.c_str());
     } else {
       ROS_ERROR("Couldn't output sparse graph to: %s",
                 sparse_graph_filepath.c_str());
@@ -164,12 +169,12 @@ void SkeletonizerNode::skeletonize(Layer<EsdfVoxel>* esdf_layer,
   skeleton_generator_.generateSkeleton();
   skeleton_generator_.getSkeleton().getEdgePointcloudWithDistances(pointcloud,
                                                                    distances);
-  ROS_INFO("Finished generating skeleton.");
+  ROS_INFO_COND(verbose, "Finished generating skeleton.");
 
   skeleton_generator_.generateSparseGraph();
-  ROS_INFO("Finished generating sparse graph.");
+  ROS_INFO_COND(verbose, "Finished generating sparse graph.");
 
-  ROS_INFO_STREAM("Total Timings: " << std::endl << timing::Timing::Print());
+  ROS_INFO_STREAM_COND(verbose, "Total Timings: " << std::endl << timing::Timing::Print());
 
   // Now visualize the graph.
   const SparseSkeletonGraph& graph = skeleton_generator_.getSparseGraph();
@@ -190,14 +195,27 @@ inline void remove_file_ros(const std::string& filename) {
 void SkeletonizerNode::map_name_cb(const std_msgs::String& msg){
 	std::string input_filepath, output_filepath, sparse_graph_filepath;
 	input_filepath = msg.data;
+	ROS_INFO("SKELETONIZER: callback on file %s", input_filepath.c_str());
 	output_filepath = input_filepath.substr(0, input_filepath.find_last_of("/")) + "/s" + std::to_string(this->file_number_) + ".vxblx";;
 	sparse_graph_filepath = input_filepath.substr(0, input_filepath.find_last_of("/")) + "/g" + std::to_string(this->file_number_) + ".vxblx";;
 
-	init_skeleton(input_filepath, output_filepath, sparse_graph_filepath);
+	bool error = false;
+	try {
+		init_skeleton(input_filepath, output_filepath, sparse_graph_filepath);
+	}
+	catch (...) {
+		ROS_ERROR("Can't read file %s", input_filepath.c_str());
+		error = true;
+		remove_file_ros(output_filepath);
+		remove_file_ros(sparse_graph_filepath);
+	}
 
 	remove_file_ros(input_filepath);
 
 	this->file_number_++;
+
+	if (error)
+		return;
 
 	mav_msgs::DoubleString out_msg;
 	out_msg.skeleton = output_filepath;

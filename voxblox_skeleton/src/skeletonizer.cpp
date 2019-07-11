@@ -15,6 +15,8 @@
 #include "std_msgs/String.h"
 #include "mav_msgs/DoubleString.h"
 
+#include <sys/stat.h>
+
 namespace voxblox {
 
 class SkeletonizerNode {
@@ -55,6 +57,7 @@ class SkeletonizerNode {
   std::string frame_id_;
   bool update_esdf;
   uint8_t file_number_ = 0;
+  std::string last_file;
 
   ros::Publisher skeleton_pub_;
   ros::Publisher sparse_graph_pub_;
@@ -192,35 +195,44 @@ inline void remove_file_ros(const std::string& filename) {
     ROS_ERROR("Failed to remove [%s] file", filename.c_str());
 }
 
+inline bool file_exists(const std::string& filename) {
+	struct stat buffer;
+	return (stat(filename.c_str(), &buffer) == 0);
+}
+
 void SkeletonizerNode::map_name_cb(const std_msgs::String& msg){
 	std::string input_filepath, output_filepath, sparse_graph_filepath;
 	input_filepath = msg.data;
 	ROS_INFO("SKELETONIZER: callback on file %s", input_filepath.c_str());
+
+	if (not last_file.empty()) {
+		if (file_exists(last_file)) {
+			remove_file_ros(input_filepath);
+			return;
+		}
+	}
+
 	output_filepath = input_filepath.substr(0, input_filepath.find_last_of("/")) + "/s" + std::to_string(this->file_number_) + ".vxblx";;
 	sparse_graph_filepath = input_filepath.substr(0, input_filepath.find_last_of("/")) + "/g" + std::to_string(this->file_number_) + ".vxblx";;
 
-	bool error = false;
 	try {
 		init_skeleton(input_filepath, output_filepath, sparse_graph_filepath);
+
+		remove_file_ros(input_filepath);
+
+		mav_msgs::DoubleString out_msg;
+		out_msg.skeleton = output_filepath;
+		out_msg.graph = sparse_graph_filepath;
+		file_path_pub_.publish(out_msg);
+		this->file_number_++;
+		last_file = sparse_graph_filepath;
 	}
 	catch (...) {
 		ROS_ERROR("Can't read file %s", input_filepath.c_str());
-		error = true;
+		remove_file_ros(input_filepath);
 		remove_file_ros(output_filepath);
 		remove_file_ros(sparse_graph_filepath);
 	}
-
-	remove_file_ros(input_filepath);
-
-	this->file_number_++;
-
-	if (error)
-		return;
-
-	mav_msgs::DoubleString out_msg;
-	out_msg.skeleton = output_filepath;
-	out_msg.graph = sparse_graph_filepath;
-	file_path_pub_.publish(out_msg);
 }
 
 }  // namespace voxblox

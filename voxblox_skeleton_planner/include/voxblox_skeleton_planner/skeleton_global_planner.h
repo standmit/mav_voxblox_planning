@@ -56,6 +56,7 @@ class SkeletonGlobalPlanner {
   bool shorten_graph;
   bool smooth_path;
   bool verbose_;
+  geometry_msgs::PoseStamped last_start_pose, last_goal;
 
  private:
   ros::NodeHandle nh_;

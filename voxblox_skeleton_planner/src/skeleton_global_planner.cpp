@@ -82,6 +82,7 @@ void SkeletonGlobalPlanner::voxblox_cb(const mav_msgs::DoubleStringConstPtr msg)
 
     if (!voxblox_server_.loadMap(msg->skeleton)) {
       ROS_ERROR("Couldn't load ESDF map!");
+      throw "Couldn't load ESDF map!";
     }
 
     std::shared_ptr<voxblox::EsdfMap> esdf_map = voxblox_server_.getEsdfMapPtr();
@@ -139,7 +140,6 @@ void SkeletonGlobalPlanner::voxblox_cb(const mav_msgs::DoubleStringConstPtr msg)
   catch (...) {
     remove_file_ros(msg->skeleton);
     remove_file_ros(msg->graph);
-    throw;
   }
 
   if (visualize_) {
@@ -203,6 +203,7 @@ bool SkeletonGlobalPlanner::plannerServiceCallback(
   catch( const tf::TransformException  &e )
   {
       ROS_ERROR( "%s", e.what() );
+      return false;
   }
 
   mav_msgs::eigenTrajectoryPointFromPoseMsg(request.start_pose, &start_pose);
@@ -210,6 +211,7 @@ bool SkeletonGlobalPlanner::plannerServiceCallback(
 
   ROS_INFO("Planning path.");
 
+  /*
   if (getMapDistance(start_pose.position_W) < constraints_.robot_radius) {
     ROS_ERROR("Start pose occupied!");
     return false;
@@ -218,6 +220,7 @@ bool SkeletonGlobalPlanner::plannerServiceCallback(
     ROS_ERROR("Goal pose occupied!");
     return false;
   }
+  */
 
   voxblox::Point start_point =
       start_pose.position_W.cast<voxblox::FloatingPoint>();
@@ -346,6 +349,9 @@ bool SkeletonGlobalPlanner::plannerServiceCallback(
     }
   }
 
+  last_start_pose = request.start_pose;
+  last_goal = request.goal_pose;
+
   if (visualize_) {
     path_marker_pub_.publish(marker_array);
   }
@@ -354,6 +360,7 @@ bool SkeletonGlobalPlanner::plannerServiceCallback(
 	  ROS_INFO_STREAM("All timings: "
 					  << std::endl
 					  << mav_trajectory_generation::timing::Timing::Print());
+  return true;
 }
 
 void SkeletonGlobalPlanner::convertCoordinatePathToPath(
@@ -389,11 +396,25 @@ bool SkeletonGlobalPlanner::publishPathCallback(
 
   geometry_msgs::PoseArray pose_array;
   pose_array.poses.reserve(last_waypoints_.size());
+  tf::Quaternion start_orientation;
+  tf::quaternionMsgToTF(last_start_pose.pose.orientation, start_orientation);
+  tf::Quaternion goal_orientation;
+  tf::quaternionMsgToTF(last_goal.pose.orientation, goal_orientation);
+  unsigned long point_i = 0;
   for (const mav_msgs::EigenTrajectoryPoint& point : last_waypoints_) {
     geometry_msgs::PoseStamped pose_stamped;
     mav_msgs::msgPoseStampedFromEigenTrajectoryPoint(point, &pose_stamped);
+    tf::quaternionTFToMsg(
+		tf::slerp(
+			start_orientation,
+			goal_orientation,
+			static_cast<float>(point_i++) / last_waypoints_.size()
+		),
+		pose_stamped.pose.orientation
+	);
     pose_array.poses.push_back(pose_stamped.pose);
   }
+  pose_array.poses.push_back(last_goal.pose);
 
   pose_array.header.frame_id = frame_id_;
   waypoint_list_pub_.publish(pose_array);

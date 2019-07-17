@@ -4,7 +4,7 @@
   <arg name="voxel_size" default="0.2" />
   <arg name="voxels_per_side" default="16" />
 
-  <node name="voxblox_skeletonizer" pkg="voxblox_skeleton" type="skeletonizer" clear_params="true" args="-v=2 -minloglevel=2" output="screen">
+  <node name="voxblox_skeletonizer" pkg="voxblox_skeleton" type="skeletonizer" clear_params="true" args="-v=2 -minloglevel=2" output="screen" respawn="true">
     <param name="generate_by_layer_neighbors" value="false" />
     <!-- If using full euclidean: 0.78 (45 degrees) -->
     <!-- If using quasi-Euclidean: 1.57 (90 degrees) -->

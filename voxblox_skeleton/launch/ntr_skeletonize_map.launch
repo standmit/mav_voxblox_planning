@@ -1,7 +1,7 @@
 <?xml version="1.0" ?>
 <launch>
   <arg name="frame_id" default="world" />
-  <arg name="voxel_size" default="0.2" />
+  <arg name="voxel_size" default="0.4" />
   <arg name="voxels_per_side" default="16" />
 
   <node name="voxblox_skeletonizer" pkg="voxblox_skeleton" type="skeletonizer" clear_params="true" args="-v=2 -minloglevel=2" output="screen" respawn="true">
@@ -16,11 +16,23 @@
     <param name="esdf_max_distance_m" value="5.0" />
     <param name="esdf_min_diff_m" value="0.0" />
     <param name="esdf_add_occupied_crust" value="true" />
-    <param name="publish_pointclouds" value="true" />
-    <param name="publish_slices" value="true" />
     <param name="world_frame" value="$(arg frame_id)" />
     <param name="frame_id" value="$(arg frame_id)" />
     <param name="verbose" value="false" />
+    
+    
+    <!-- Publishing settings. -->
+    <param name="publish_tsdf_map" value="false" />
+    <param name="publish_esdf_map" value="false" />
+    <param name="publish_slices" value="false" />
+    <param name="publish_tsdf_info" value="false" />
+    <param name="publish_pointclouds" value="false" />
+    <param name="output_mesh_as_pointcloud" value="false" />
+    <param name="output_mesh_as_pcl_mesh" value="false" />
+    <param name="publish_traversable" value="false" />
+    <param name="traversability_radius" value="1.0" />
+    <param name="use_const_weight" value="true" />
+
   </node>
 
 </launch>

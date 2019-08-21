@@ -1,11 +1,11 @@
 <?xml version="1.0"?>
 <launch>
-  <arg name="voxel_size" default="0.2" />
+  <arg name="voxel_size" default="0.4" />
   <arg name="voxels_per_side" default="16" />
   <arg name="frame_id" default="world" />
 
   <node name="voxblox_skeleton_planner" pkg="voxblox_skeleton_planner" type="skeleton_global_planner_node" args="-minloglevel=2" output="screen" clear_params="true" respawn="true">
-    <remap from="~voxblox" to="/voxblox_skeletonizer/skeleton_and_graph_file" />
+    <remap from="~voxblox" to="/skeletonize_server/skeleton_and_graph_file" />
   
     <param name="visualize" value="true" />
     <param name="robot_radius" value="1.0" />

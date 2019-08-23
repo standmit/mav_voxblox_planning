@@ -49,16 +49,17 @@ cs_add_library(${PROJECT_NAME}
   src/skeleton_serialization.cpp
   src/sparse_graph_planner.cpp
   src/voxel_template_matcher.cpp
+  src/skeletonize_server_full.cpp
 )
 target_link_libraries(${PROJECT_NAME} ${PROJECT_NAME}_proto)
 
 ############
 # BINARIES #
 ############
-cs_add_executable(skeletonizer
-  src/skeletonizer.cpp
-)
-target_link_libraries(skeletonizer ${PROJECT_NAME})
+#cs_add_executable(skeletonizer
+#  src/skeletonizer.cpp
+#)
+#target_link_libraries(skeletonizer ${PROJECT_NAME})
 
 cs_add_executable(skeletonize_server
   src/skeletonize_server.cpp

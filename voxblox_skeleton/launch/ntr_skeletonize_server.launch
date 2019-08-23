@@ -18,6 +18,7 @@
     <param name="world_frame" value="$(arg frame_id)" />
     <param name="frame_id" value="$(arg frame_id)" />
     <param name="verbose" value="false" />
+    <param name="skeletonizer_visualize" value="true" />
 
     <remap from="pointcloud" to="$(arg pointcloud_topic)"/>
     
@@ -35,9 +36,6 @@
     
     <param name="publish_tsdf_map" value="false" />
     <param name="publish_esdf_map" value="false" />
-    <remap from="voxblox_node/esdf_map_out" to="esdf_map" />
-    <remap from="voxblox_node/tsdf_map_out" to="tsdf_map" />
-    
     <param name="publish_slices" value="true" />
     <param name="publish_tsdf_info" value="true" />
     <param name="publish_pointclouds" value="true" />

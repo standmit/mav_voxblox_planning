@@ -11,6 +11,7 @@ add_definitions(-std=c++11)
 #############
 cs_add_library(${PROJECT_NAME}
   src/skeleton_global_planner.cpp
+  src/skeleton_global_planner_full.cpp
   src/skeleton_graph_planner.cpp
 )
 
@@ -20,7 +21,11 @@ cs_add_library(${PROJECT_NAME}
 cs_add_executable(skeleton_global_planner_node
   src/skeleton_global_planner_node.cpp
 )
+cs_add_executable(skeleton_global_planner_full_node
+  src/skeleton_global_planner_full_node.cpp
+)
 target_link_libraries(skeleton_global_planner_node ${PROJECT_NAME})
+target_link_libraries(skeleton_global_planner_full_node ${PROJECT_NAME})
 
 ##########
 # EXPORT #

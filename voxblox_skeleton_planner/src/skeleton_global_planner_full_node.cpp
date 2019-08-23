@@ -1,0 +1,19 @@
+#include "voxblox_skeleton_planner/skeleton_global_planner_full.h"
+
+int main(int argc, char** argv) {
+  ros::init(argc, argv, "skeleton_global_planner");
+  google::InitGoogleLogging(argv[0]);
+  google::InstallFailureSignalHandler();
+  google::ParseCommandLineFlags(&argc, &argv, false);
+
+  ros::NodeHandle nh("");
+  ros::NodeHandle nh_private("~");
+
+  FLAGS_alsologtostderr = true;
+
+  mav_planning::SkeletonGlobalPlannerFull planner_node(nh, nh_private);
+  ROS_INFO("Initialized skeleton global planner node.");
+
+  ros::spin();
+  return 0;
+}

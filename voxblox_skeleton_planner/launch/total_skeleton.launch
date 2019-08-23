@@ -7,15 +7,23 @@
     <include file="$(find voxblox_skeleton_planner)/launch/ntr_voxblox_node.launch">
         <arg name="pointcloud_topic" value="$(arg pointcloud_topic)" />
     </include>
+    
     <include file="$(find voxblox_skeleton)/launch/ntr_skeletonize_map.launch" />
- -->
+    
+    <include file="$(find voxblox_skeleton_planner)/launch/ntr_skeleton_planner.launch" />
+-->
 
-<!-- single tmpfs filesave --> 
+<!-- single tmpfs filesave-->  
     <include file="$(find voxblox_skeleton)/launch/ntr_skeletonize_server.launch" >
         <arg name="pointcloud_topic" value="$(arg pointcloud_topic)" />
     </include>
 
- 
     <include file="$(find voxblox_skeleton_planner)/launch/ntr_skeleton_planner.launch" />
 
+
+<!--
+	<include file="$(find voxblox_skeleton_planner)/launch/ntr_skeleton_planner_full.launch" >
+		<arg name="pointcloud_topic" value="$(arg pointcloud_topic)" />
+    </include>
+-->
 </launch>

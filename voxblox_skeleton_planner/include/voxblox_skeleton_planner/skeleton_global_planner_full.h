@@ -20,8 +20,6 @@
 #include <voxblox_skeleton/sparse_graph_planner.h>
 #include "voxblox_skeleton_planner/skeleton_graph_planner.h"
 
-#include "mav_msgs/DoubleString.h"
-
 namespace mav_planning {
 
 class SkeletonGlobalPlannerFull {
@@ -32,19 +30,17 @@ class SkeletonGlobalPlannerFull {
                         const ros::NodeHandle& nh_private);
   virtual ~SkeletonGlobalPlannerFull() {}
 
-  void generateSparseGraph();
+  void init();
+  void setupGraphPlanner();
 
   bool plannerServiceCallback(
       mav_planning_msgs::PlannerServiceRequest& request,
       mav_planning_msgs::PlannerServiceResponse& response);
-
   bool publishPathCallback(std_srvs::EmptyRequest& request,
                            std_srvs::EmptyResponse& response);
-
   void convertCoordinatePathToPath(
       const voxblox::AlignedVector<voxblox::Point>& coordinate_path,
       mav_msgs::EigenTrajectoryPointVector* path) const;
-
   double getMapDistance(const Eigen::Vector3d& position) const;
 
  protected:
@@ -78,10 +74,8 @@ class SkeletonGlobalPlannerFull {
   // Settings for physical constriants.
   mav_planning::PhysicalConstraints constraints_;
 
-  std::string sparse_graph_path_;
   std::string frame_id_;
   bool visualize_;
-  double voxel_size_;  // Cache the size of the voxels used by the map.
 
   voxblox::SkeletonizeServerFull skeletonizer_;
 

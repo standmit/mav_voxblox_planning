@@ -11,98 +11,94 @@ SkeletonGlobalPlannerFull::SkeletonGlobalPlannerFull(const ros::NodeHandle& nh,
     : nh_(nh),
       nh_private_(nh_private),
       visualize_(true),
-	  skeletonizer_(nh, nh_private),
-      skeleton_graph_planner_(nh_, nh_private_) {
-  constraints_.setParametersFromRos(nh_private_);
+      skeleton_graph_planner_(nh_, nh_private_),
+	  skeletonizer_(nh_, nh_private_),
+	  run_astar_esdf(false),
+	  run_astar_diagram(true),
+	  run_astar_graph(true),
+	  shorten_graph(true),
+	  smooth_path(true),
+	  verbose_(true)
+{
+	init();
+}
 
-  nh_private_.param("visualize", visualize_, visualize_);
-  nh_private_.param("frame_id", frame_id_, std::string("map"));
+void SkeletonGlobalPlannerFull::init() {
+	constraints_.setParametersFromRos(nh_private_);
 
-  run_astar_esdf = nh_private_.param("run_astar_esdf", false);
-  run_astar_diagram = nh_private_.param("run_astar_diagram", true);
-  run_astar_graph = nh_private_.param("run_astar_graph", true);
-  shorten_graph = nh_private_.param("shorten_graph", true);
-  smooth_path  = nh_private_.param("smooth_path", true);
-  verbose_ = nh_private_.param("verbose", true);
+	verbose_ = nh_private_.param("verbose", verbose_);
+	nh_private_.param("visualize", visualize_, visualize_);
+	nh_private_.param("frame_id", frame_id_, std::string("map"));
 
-  path_marker_pub_ =
-      nh_private_.advertise<visualization_msgs::MarkerArray>("planner_path", 1, true);
-  skeleton_pub_ = nh_private_.advertise<pcl::PointCloud<pcl::PointXYZ> >(
-      "planner_skeleton", 1, true);
-  sparse_graph_pub_ = nh_private_.advertise<visualization_msgs::MarkerArray>(
-      "planner_sparse_graph", 1, true);
+	run_astar_esdf = nh_private_.param("run_astar_esdf", run_astar_esdf);
+	run_astar_diagram = nh_private_.param("run_astar_diagram", run_astar_diagram);
+	run_astar_graph = nh_private_.param("run_astar_graph", run_astar_graph);
+	shorten_graph = nh_private_.param("shorten_graph", shorten_graph);
+	smooth_path  = nh_private_.param("smooth_path", smooth_path);
 
-  waypoint_list_pub_ =
-      nh_.advertise<geometry_msgs::PoseArray>("waypoint_list", 1);
+	path_marker_pub_ = nh_private_.advertise<visualization_msgs::MarkerArray>(
+			"planner_path", 1, true);
+	skeleton_pub_ = nh_private_.advertise<pcl::PointCloud<pcl::PointXYZ> >(
+			"planner_skeleton", 1, true);
+	sparse_graph_pub_ = nh_private_.advertise<visualization_msgs::MarkerArray>(
+			"planner_sparse_graph", 1, true);
 
-  planner_srv_ = nh_private_.advertiseService(
-      "plan", &SkeletonGlobalPlannerFull::plannerServiceCallback, this);
-  path_pub_srv_ = nh_private_.advertiseService(
-      "publish_path", &SkeletonGlobalPlannerFull::publishPathCallback, this);
+	waypoint_list_pub_ =
+			nh_.advertise<geometry_msgs::PoseArray>("waypoint_list", 1);
 
-  skeletonizer_.esdf_server_->setTraversabilityRadius(constraints_.robot_radius);
-  skeletonizer_.skeleton_generator_.setMinGvdDistance(constraints_.robot_radius);
-  skeletonizer_.skeleton_generator_.setGenerateByLayerNeighbors(true);
+	planner_srv_ = nh_private_.advertiseService(
+			"plan", &SkeletonGlobalPlannerFull::plannerServiceCallback, this);
+	path_pub_srv_ = nh_private_.advertiseService(
+			"publish_path", &SkeletonGlobalPlannerFull::publishPathCallback, this);
 
-  skeleton_planner_.setMinEsdfDistance(constraints_.robot_radius);
+	skeleton_planner_.setMinEsdfDistance(constraints_.robot_radius);
+	path_shortener_.setConstraints(constraints_);
 
-  path_shortener_.setConstraints(constraints_);
+	// Loco smoother!
+	loco_smoother_.setParametersFromRos(nh_private_);
+	loco_smoother_.setMapDistanceCallback(std::bind(
+			&SkeletonGlobalPlannerFull::getMapDistance, this, std::placeholders::_1));
 
-  // Loco smoother!
-  loco_smoother_.setParametersFromRos(nh_private_);
-  loco_smoother_.setMapDistanceCallback(std::bind(
-      &SkeletonGlobalPlannerFull::getMapDistance, this, std::placeholders::_1));
-
-  skeletonizer_sub_ = nh_private_.subscribe("skeletonizer_update_trigger", 1, &SkeletonGlobalPlannerFull::skeletonizer_update_cb, this);
+	skeletonizer_sub_ = nh_private_.subscribe("skeletonizer_update_trigger", 1, &SkeletonGlobalPlannerFull::skeletonizer_update_cb, this);
 }
 
 
 void SkeletonGlobalPlannerFull::skeletonizer_update_cb(const std_msgs::EmptyConstPtr) {
-  try {
-    ROS_INFO_COND(verbose_,
-        "Size: %f VPS: %zu",
-		skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr()->voxel_size(),
-		skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr()->voxels_per_side()
-		);
+	try {
+		std::shared_ptr<voxblox::EsdfMap> esdf_map = skeletonizer_.esdf_server_->getEsdfMapPtr();
+		CHECK(esdf_map);
 
-    // Set up the A* planners.
-    skeleton_planner_.setSkeletonLayer(skeletonizer_.skeleton_generator_.getSkeletonLayer());
-    skeleton_planner_.setEsdfLayer(
-    		skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr());
+		ROS_INFO_COND(verbose_,
+			"Size: %f VPS: %zu",
+			skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr()->voxel_size(),
+			skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr()->voxels_per_side()
+			);
 
-    // Set up skeleton graph planner.
-    skeleton_graph_planner_.setEsdfLayer(
-    		skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr());
+		// Set up the A* planners.
+		skeleton_planner_.setSkeletonLayer(
+				skeletonizer_.skeleton_generator_.getSkeletonLayer() );
+		skeleton_planner_.setEsdfLayer(
+				skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr() );
 
-    // Set up shortener.
-    path_shortener_.setEsdfLayer(
-    		skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr());
+		// Set up skeleton graph planner.
+		skeleton_graph_planner_.setEsdfLayer(
+				skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr() );
 
-    loco_smoother_.setMinCollisionCheckResolution(
-    		skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr()->voxel_size());
+		// Set up shortener.
+		path_shortener_.setEsdfLayer(
+				skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr() );
 
-    generateSparseGraph();
+		loco_smoother_.setMinCollisionCheckResolution(
+				skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr()->voxel_size() );
 
-  }
-  catch (...) {
-	  ROS_ERROR("Skeleton planner try-catch error!");
-  }
-
-  if (visualize_) {
-	  skeletonizer_.esdf_server_->publishSlices();
-	  skeletonizer_.esdf_server_->publishPointclouds();
-  }
+		setupGraphPlanner();
+	}
+	catch (...) {
+		ROS_ERROR("Skeleton planner try-catch error!");
+	}
 }
 
-void SkeletonGlobalPlannerFull::generateSparseGraph() {
-	ROS_INFO_COND(verbose_, "About to generate skeleton graph.");
-
-	skeletonizer_.skeleton_generator_.updateSkeletonFromLayer();
-	ROS_INFO_COND(verbose_, "Re-populated from layer.");
-
-	skeletonizer_.skeleton_generator_.generateSparseGraph();
-	ROS_INFO_COND(verbose_, "Generated skeleton graph.");
-
+void SkeletonGlobalPlannerFull::setupGraphPlanner() {
 	if (visualize_) {
 		voxblox::Pointcloud pointcloud;
 		std::vector<float> distances;
@@ -123,13 +119,10 @@ void SkeletonGlobalPlannerFull::generateSparseGraph() {
 		sparse_graph_pub_.publish(marker_array);
 	}
 
-  // Set up the graph planner.
-  mav_trajectory_generation::timing::Timer kd_tree_init("plan/graph/setup");
-  skeleton_graph_planner_.setSparseGraph(&skeletonizer_.skeleton_generator_.getSparseGraph());
-  kd_tree_init.Stop();
+	// Set up the graph planner.
+	skeleton_graph_planner_.setSparseGraph(
+			&skeletonizer_.skeleton_generator_.getSparseGraph() );
 
-  ROS_INFO_STREAM_COND(verbose_,
-		  "Generation timings: \n" << voxblox::timing::Timing::Print());
 }
 
 bool SkeletonGlobalPlannerFull::plannerServiceCallback(

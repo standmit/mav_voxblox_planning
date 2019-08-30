@@ -68,8 +68,7 @@ void SkeletonGlobalPlannerFull::skeletonizer_update_cb(const std_msgs::EmptyCons
 		std::shared_ptr<voxblox::EsdfMap> esdf_map = skeletonizer_.esdf_server_->getEsdfMapPtr();
 		CHECK(esdf_map);
 
-		ROS_INFO_COND(verbose_,
-			"Size: %f VPS: %zu",
+		ROS_INFO_COND(verbose_, "ESDF voxel_size: %f VPS: %zu",
 			skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr()->voxel_size(),
 			skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr()->voxels_per_side()
 			);
@@ -145,16 +144,16 @@ bool SkeletonGlobalPlannerFull::plannerServiceCallback(
 
   ROS_INFO("Planning path.");
 
-  /*
-  if (getMapDistance(start_pose.position_W) < constraints_.robot_radius) {
-    ROS_ERROR("Start pose occupied!");
-    return false;
-  }
-  if (getMapDistance(goal_pose.position_W) < constraints_.robot_radius) {
-    ROS_ERROR("Goal pose occupied!");
-    return false;
-  }
-  */
+
+//  if (getMapDistance(start_pose.position_W) < constraints_.robot_radius) {
+//    ROS_ERROR("Start pose occupied!");
+//    return false;
+//  }
+//  if (getMapDistance(goal_pose.position_W) < constraints_.robot_radius) {
+//    ROS_ERROR("Goal pose occupied!");
+//    return false;
+//  }
+
 
   voxblox::Point start_point =
       start_pose.position_W.cast<voxblox::FloatingPoint>();

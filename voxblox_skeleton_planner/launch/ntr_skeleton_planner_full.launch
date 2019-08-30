@@ -4,7 +4,7 @@
   <arg name="voxels_per_side" default="16" />
   <arg name="frame_id" default="world" />
   <arg name="esdf_max_distance_m" default="2.0"/>
-  <arg name="clear_radius" default="1.0" />
+  <arg name="clear_radius" default="1.4" />
   <arg name="pointcloud_topic" default="pointcloud" />
 
   <node name="voxblox_skeleton_planner" pkg="voxblox_skeleton_planner" type="skeleton_global_planner_full_node" args="-minloglevel=2" output="screen" clear_params="true" respawn="true">
@@ -17,7 +17,7 @@
     <param name="frame_id" value="$(arg frame_id)" />
 
     <!-- Planner params -->
-    <param name="robot_radius" value="1.0" />
+    <param name="robot_radius" value="1.4" />
     <param name="trust_approx_solution" value="true" />
     <param name="split_at_collisions" value="true" />
     <param name="optimize_time" value="true" />
@@ -28,7 +28,7 @@
     <!-- If using quasi-Euclidean: 1.57 (90 degrees) -->
     <param name="min_separation_angle" value="0.78" />
     <param name="update_esdf" value="false" />
-    <param name="min_gvd_distance" value="0.5" />
+    <param name="min_gvd_distance" value="0.25" />
     <param name="esdf_add_occupied_crust" value="true" />
 
     <!-- ESDF params -->
@@ -45,8 +45,8 @@
     <param name="esdf_min_diff_m" value="0.0" />
     <param name="max_ray_length_m" value="10.0" />        
     
-    <param name="min_time_between_msgs_sec" value="1.0" />        
-    <param name="occupied_sphere_radius" value="4.0" />
+    <param name="min_time_between_msgs_sec" value="0.50" />        
+    <param name="occupied_sphere_radius" value="4" /> 
     <param name="clear_sphere_radius" value="$(arg clear_radius)" />
     <param name="slice_level" value="1.0" />
 

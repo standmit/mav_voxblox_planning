@@ -182,9 +182,15 @@ bool SkeletonAStar::getPathUsingEsdfAndDiagram(
   CHECK_NOTNULL(coordinate_path);
   CHECK_NOTNULL(skeleton_layer_);
   CHECK_NOTNULL(esdf_layer_);
-
   const size_t voxels_per_side = skeleton_layer_->voxels_per_side();
+  printf("ESDF layer VPS: %zu Sk layer VPS: %zu \n",
+		  esdf_layer_->voxels_per_side(),
+		  voxels_per_side
+		  );
 
+  if ( voxels_per_side != esdf_layer_->voxels_per_side() ) {
+	  return false;
+  }
   // Look up where in the skeleton diagram the start position is.
   // Get the voxel.
   BlockIndex start_block_index, end_block_index;
@@ -194,16 +200,15 @@ bool SkeletonAStar::getPathUsingEsdfAndDiagram(
       start_position, &start_block_index, &start_voxel_index);
   Point end_position_center = getBlockAndVoxelIndex<EsdfVoxel>(
       end_position, &end_block_index, &end_voxel_index);
-
   // Get the distance to the goal index.
   Eigen::Vector3i goal_voxel_offset = Neighborhood<>::getOffsetBetweenVoxels(
       start_block_index, start_voxel_index, end_block_index, end_voxel_index,
       voxels_per_side);
-
   // First the diagram start and end points.
   // For the diagram start, search toward the goal until you hit the diagram.
   AlignedVector<Eigen::Vector3i> voxel_path_to_start, voxel_path_from_end,
       voxel_path_on_diagram;
+
   if (!getPathToNearestDiagramPt(start_block_index, start_voxel_index,
                                  goal_voxel_offset, &voxel_path_to_start)) {
     return false;
@@ -224,17 +229,14 @@ bool SkeletonAStar::getPathUsingEsdfAndDiagram(
   Neighborhood<>::getFromBlockAndVoxelIndexAndDirection(
       end_block_index, end_voxel_index, voxel_path_from_end.back(),
       voxels_per_side, &diagram_end_block_index, &diagram_end_voxel_index);
-
   goal_voxel_offset = Neighborhood<>::getOffsetBetweenVoxels(
       diagram_start_block_index, diagram_start_voxel_index,
       diagram_end_block_index, diagram_end_voxel_index, voxels_per_side);
-
   if (!getPathInVoxels<SkeletonVoxel>(
           diagram_start_block_index, diagram_start_voxel_index,
           goal_voxel_offset, &voxel_path_on_diagram)) {
     return false;
   }
-
   AlignedVector<Point> coordinate_path_start, coordinate_path_diagram,
       coordinate_path_end;
 
@@ -249,7 +251,6 @@ bool SkeletonAStar::getPathUsingEsdfAndDiagram(
                             voxel_path_from_end, &coordinate_path_end);
   // Reverse the last one...
   std::reverse(coordinate_path_end.begin(), coordinate_path_end.end());
-
   // Now concatenate them together.
   coordinate_path->insert(coordinate_path->end(), coordinate_path_start.begin(),
                           coordinate_path_start.end());
@@ -323,11 +324,12 @@ bool SkeletonAStar::getPathToNearestDiagramPt(
     AlignedVector<Eigen::Vector3i>* voxel_path) const {
   CHECK_NOTNULL(voxel_path);
   CHECK_NOTNULL(skeleton_layer_);
-
   int num_iterations = 0;
-
   const size_t voxels_per_side = skeleton_layer_->voxels_per_side();
 
+  if ( voxels_per_side != esdf_layer_->voxels_per_side() ) {
+	  return false;
+  }
   // Make the 3 maps we need.
   IndexToDistanceMap f_score_map;
   IndexToDistanceMap g_score_map;
@@ -337,7 +339,6 @@ bool SkeletonAStar::getPathToNearestDiagramPt(
   IndexSet open_set;  // This should be a priority queue... But then harder
   // to check for belonging. Ehhh. Just sort it each time.
   IndexSet closed_set;
-
   Eigen::Vector3i current_voxel_offset = Eigen::Vector3i::Zero();
 
   // Set up storage for voxels and blocks.
@@ -345,11 +346,9 @@ bool SkeletonAStar::getPathToNearestDiagramPt(
   VoxelIndex voxel_index = start_voxel_index;
   Block<EsdfVoxel>::ConstPtr block_ptr =
       getBlockPtrByIndex<EsdfVoxel>(block_index);
-
   f_score_map[current_voxel_offset] =
       estimateCostToGoal(current_voxel_offset, goal_voxel_offset);
   g_score_map[current_voxel_offset] = 0.0;
-
   open_set.insert(current_voxel_offset);
 
   while (!open_set.empty()) {

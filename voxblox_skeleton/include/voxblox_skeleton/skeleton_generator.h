@@ -94,6 +94,8 @@ class SkeletonGenerator {
   // Get the skeleton layer.
   Layer<SkeletonVoxel>* getSkeletonLayer() { return skeleton_layer_.get(); }
 
+  Layer<SkeletonVoxel>::Ptr getSkeletonLayerPtr() { return skeleton_layer_; }
+
   // Set the skeleton layer! Takes ownership.
   void setSkeletonLayer(Layer<SkeletonVoxel>* skeleton_layer);
 
@@ -193,7 +195,7 @@ class SkeletonGenerator {
   Layer<EsdfVoxel>* esdf_layer_;
   // Owned by the generator! Since it's an intermediate by-product of
   // constructing the graph.
-  std::unique_ptr<Layer<SkeletonVoxel>> skeleton_layer_;
+  Layer<SkeletonVoxel>::Ptr skeleton_layer_;
 
   // Cached layer properties. We assume and check that they are the same for
   // both ESDF and skeleton layer.

@@ -4,10 +4,10 @@ namespace voxblox {
 
 SkeletonAStar::SkeletonAStar() : max_iterations_(0), skeleton_layer_(nullptr) {}
 
-SkeletonAStar::SkeletonAStar(const Layer<SkeletonVoxel>* skeleton_layer)
-    : max_iterations_(0), skeleton_layer_(skeleton_layer) {
-  CHECK_NOTNULL(skeleton_layer_);
-}
+//SkeletonAStar::SkeletonAStar(const Layer<SkeletonVoxel>* skeleton_layer)
+//    : max_iterations_(0), skeleton_layer_(skeleton_layer) {
+//  CHECK_NOTNULL(skeleton_layer_);
+//}
 
 template <>
 Point SkeletonAStar::getBlockAndVoxelIndex<SkeletonVoxel>(
@@ -183,14 +183,7 @@ bool SkeletonAStar::getPathUsingEsdfAndDiagram(
   CHECK_NOTNULL(skeleton_layer_);
   CHECK_NOTNULL(esdf_layer_);
   const size_t voxels_per_side = skeleton_layer_->voxels_per_side();
-  printf("ESDF layer VPS: %zu Sk layer VPS: %zu \n",
-		  esdf_layer_->voxels_per_side(),
-		  voxels_per_side
-		  );
 
-  if ( voxels_per_side != esdf_layer_->voxels_per_side() ) {
-	  return false;
-  }
   // Look up where in the skeleton diagram the start position is.
   // Get the voxel.
   BlockIndex start_block_index, end_block_index;
@@ -327,9 +320,6 @@ bool SkeletonAStar::getPathToNearestDiagramPt(
   int num_iterations = 0;
   const size_t voxels_per_side = skeleton_layer_->voxels_per_side();
 
-  if ( voxels_per_side != esdf_layer_->voxels_per_side() ) {
-	  return false;
-  }
   // Make the 3 maps we need.
   IndexToDistanceMap f_score_map;
   IndexToDistanceMap g_score_map;

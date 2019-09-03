@@ -31,7 +31,7 @@ class SkeletonGraphPlanner {
   // Both are expected to be OWNED BY ANOTHER OBJECT that shouldn't go out of
   // scope while this object exists.
   void setEsdfLayer(voxblox::Layer<voxblox::EsdfVoxel>* esdf_layer);
-  void setSkeletonLayer(voxblox::Layer<voxblox::SkeletonVoxel>* skeleton_layer);
+  void setSkeletonLayer(voxblox::Layer<voxblox::SkeletonVoxel>::Ptr skeleton_layer);
   void setSparseGraph(voxblox::SparseSkeletonGraph* sparse_graph);
 
   // Fixed start and end locations, returns list of waypoints between.

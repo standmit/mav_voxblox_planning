@@ -40,7 +40,7 @@ void SkeletonGraphPlanner::setEsdfLayer(
 }
 
 void SkeletonGraphPlanner::setSkeletonLayer(
-    voxblox::Layer<voxblox::SkeletonVoxel>* skeleton_layer) {
+    voxblox::Layer<voxblox::SkeletonVoxel>::Ptr skeleton_layer) {
   skeleton_planner_.setSkeletonLayer(skeleton_layer);
 }
 

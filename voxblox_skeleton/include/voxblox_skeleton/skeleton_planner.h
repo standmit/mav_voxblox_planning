@@ -21,7 +21,7 @@ class SkeletonAStar {
   SkeletonAStar();
   SkeletonAStar(const Layer<SkeletonVoxel>* skeleton_layer);
 
-  inline void setSkeletonLayer(const Layer<SkeletonVoxel>* skeleton_layer) {
+  inline void setSkeletonLayer(const Layer<SkeletonVoxel>::Ptr skeleton_layer) {
     CHECK_NOTNULL(skeleton_layer);
     skeleton_layer_ = skeleton_layer;
   }
@@ -33,8 +33,8 @@ class SkeletonAStar {
     if (skeleton_layer_ == nullptr) {
       LOG(INFO) << "Setting neighbor tools to not 0! "
                 << esdf_layer->voxels_per_side();
-      skeleton_layer_ = new Layer<SkeletonVoxel>(esdf_layer->voxel_size(),
-                                                 esdf_layer->voxels_per_side());
+      skeleton_layer_.reset( new Layer<SkeletonVoxel>(esdf_layer->voxel_size(),
+											 	 	  esdf_layer->voxels_per_side()));
     }
   }
 
@@ -117,7 +117,7 @@ class SkeletonAStar {
   // this minimum distance.
   float min_esdf_distance_;
 
-  const Layer<SkeletonVoxel>* skeleton_layer_;
+  Layer<SkeletonVoxel>::Ptr skeleton_layer_;
   const Layer<EsdfVoxel>* esdf_layer_;
 };
 

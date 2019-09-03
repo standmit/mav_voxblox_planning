@@ -114,10 +114,11 @@ void SkeletonGlobalPlanner::voxblox_cb(const mav_msgs::DoubleStringConstPtr msg)
     // Now set up the skeleton generator.
     skeleton_generator_.setEsdfLayer(
         voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr());
+
     skeleton_generator_.setSkeletonLayer(skeleton_layer);
 
     // Set up the A* planners.
-    skeleton_planner_.setSkeletonLayer(skeleton_generator_.getSkeletonLayer());
+    skeleton_planner_.setSkeletonLayer(skeleton_generator_.getSkeletonLayerPtr());
     skeleton_planner_.setEsdfLayer(
         voxblox_server_.getEsdfMapPtr()->getEsdfLayerPtr());
 

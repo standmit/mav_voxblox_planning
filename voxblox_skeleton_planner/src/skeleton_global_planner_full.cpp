@@ -75,7 +75,7 @@ void SkeletonGlobalPlannerFull::skeletonizer_update_cb(const std_msgs::EmptyCons
 
 		// Set up the A* planners.
 		skeleton_planner_.setSkeletonLayer(
-				skeletonizer_.skeleton_generator_.getSkeletonLayer() );
+				skeletonizer_.skeleton_generator_.getSkeletonLayerPtr() );
 		skeleton_planner_.setEsdfLayer(
 				skeletonizer_.esdf_server_->getEsdfMapPtr()->getEsdfLayerPtr() );
 
@@ -185,41 +185,42 @@ bool SkeletonGlobalPlannerFull::plannerServiceCallback(
   }
 
   if (run_astar_diagram) {
-    voxblox::AlignedVector<voxblox::Point> diagram_coordinate_path;
-    mav_trajectory_generation::timing::Timer astar_diag_timer(
-        "plan/astar_diag");
-    bool success = skeleton_planner_.getPathUsingEsdfAndDiagram(
-        start_point, goal_point, &diagram_coordinate_path);
-    mav_msgs::EigenTrajectoryPointVector diagram_path;
-    convertCoordinatePathToPath(diagram_coordinate_path, &diagram_path);
-    double path_length = computePathLength(diagram_path);
-    int num_vertices = diagram_path.size();
-    astar_diag_timer.Stop();
-    ROS_INFO("Diag A* Success? %d Path length: %f Vertices: %d", success,
-             path_length, num_vertices);
+		voxblox::AlignedVector<voxblox::Point> diagram_coordinate_path;
+		mav_trajectory_generation::timing::Timer astar_diag_timer(
+			"plan/astar_diag");
+		bool success = skeleton_planner_.getPathUsingEsdfAndDiagram(
+			start_point, goal_point, &diagram_coordinate_path);
+		mav_msgs::EigenTrajectoryPointVector diagram_path;
+		convertCoordinatePathToPath(diagram_coordinate_path, &diagram_path);
+		double path_length = computePathLength(diagram_path);
+		int num_vertices = diagram_path.size();
+		astar_diag_timer.Stop();
+		ROS_INFO("Diag A* Success? %d Path length: %f Vertices: %d", success,
+				 path_length, num_vertices);
 
-    if (visualize_) {
-      marker_array.markers.push_back(createMarkerForPath(
-          diagram_path, frame_id_, mav_visualization::Color::Purple(),
-          "astar_diag", 0.1));
-    }
+		if (visualize_) {
+		  marker_array.markers.push_back(createMarkerForPath(
+			  diagram_path, frame_id_, mav_visualization::Color::Purple(),
+			  "astar_diag", 0.1));
+		}
 
-    if (shorten_graph) {
-      mav_trajectory_generation::timing::Timer shorten_timer(
-          "plan/astar_diag/shorten");
-      mav_msgs::EigenTrajectoryPointVector short_path;
-      path_shortener_.shortenPath(diagram_path, &short_path);
-      path_length = computePathLength(short_path);
-      num_vertices = short_path.size();
-      ROS_INFO("Diagram Shorten Success? %d Path length: %f Vertices: %d",
-               success, path_length, num_vertices);
-      if (visualize_) {
-        marker_array.markers.push_back(createMarkerForPath(
-            short_path, frame_id_, mav_visualization::Color::Pink(),
-            "short_astar_plan", 0.1));
-      }
-      shorten_timer.Stop();
-    }
+		if (shorten_graph) {
+		  mav_trajectory_generation::timing::Timer shorten_timer(
+			  "plan/astar_diag/shorten");
+		  mav_msgs::EigenTrajectoryPointVector short_path;
+		  path_shortener_.shortenPath(diagram_path, &short_path);
+		  path_length = computePathLength(short_path);
+		  num_vertices = short_path.size();
+		  ROS_INFO("Diagram Shorten Success? %d Path length: %f Vertices: %d",
+				   success, path_length, num_vertices);
+		  if (visualize_) {
+			marker_array.markers.push_back(createMarkerForPath(
+				short_path, frame_id_, mav_visualization::Color::Pink(),
+				"short_astar_plan", 0.1));
+		  }
+		  shorten_timer.Stop();
+		}
+
   }
 
   if (run_astar_graph) {

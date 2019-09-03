@@ -33,8 +33,10 @@ void SkeletonGenerator::setEsdfLayer(Layer<EsdfVoxel>* esdf_layer) {
   // Make a skeleton layer to store the intermediate skeleton steps, along with
   // the lists.
   skeleton_layer_.reset(new Layer<SkeletonVoxel>(
-      esdf_layer_->voxel_size(), esdf_layer_->voxels_per_side()));
-  skeleton_planner_.setSkeletonLayer(skeleton_layer_.get());
+      esdf_layer_->voxel_size(),
+	  esdf_layer_->voxels_per_side())
+  );
+  skeleton_planner_.setSkeletonLayer(skeleton_layer_);
   skeleton_planner_.setEsdfLayer(esdf_layer_);
   skeleton_planner_.setMinEsdfDistance(min_gvd_distance_);
 
@@ -1350,7 +1352,7 @@ FloatingPoint SkeletonGenerator::getMaxEdgeDistanceOnPath(
 
 void SkeletonGenerator::setSkeletonLayer(Layer<SkeletonVoxel>* skeleton_layer) {
   skeleton_layer_.reset(skeleton_layer);
-  skeleton_planner_.setSkeletonLayer(skeleton_layer_.get());
+  skeleton_planner_.setSkeletonLayer(skeleton_layer_);
 }
 
 void SkeletonGenerator::repairGraph() {

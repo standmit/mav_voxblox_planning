@@ -2,6 +2,7 @@
 
 <launch>
     <arg name="pointcloud_topic" default="pointcloud" />
+    <arg name="machine" default="" />
 
 <!-- double tmpfs filesave
     <include file="$(find voxblox_skeleton_planner)/launch/ntr_voxblox_node.launch">
@@ -24,6 +25,7 @@
 <!-- -->
 	<include file="$(find voxblox_skeleton_planner)/launch/ntr_skeleton_planner_full.launch" >
 		<arg name="pointcloud_topic" value="$(arg pointcloud_topic)" />
+		<arg name="machine" value="$(arg machine)" />
     </include>
 
 </launch>

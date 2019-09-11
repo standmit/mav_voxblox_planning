@@ -6,8 +6,9 @@
   <arg name="esdf_max_distance_m" default="2.0"/>
   <arg name="clear_radius" default="1.4" />
   <arg name="pointcloud_topic" default="pointcloud" />
+  <arg name="machine" default="" />
 
-  <node name="voxblox_skeleton_planner" pkg="voxblox_skeleton_planner" type="skeleton_global_planner_full_node" args="-minloglevel=2" output="screen" clear_params="true" respawn="true">
+  <node name="voxblox_skeleton_planner" machine="$(arg machine)" pkg="voxblox_skeleton_planner" type="skeleton_global_planner_full_node" args="-minloglevel=2" output="screen" clear_params="true" respawn="true">
     <remap from="pointcloud" to="$(arg pointcloud_topic)"/>
      
     <param name="verbose" value="false" />
